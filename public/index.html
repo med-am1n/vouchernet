@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoucherNet — WiFi Hotspot Manager</title>
+<style>
+:root{--bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;--border2:#484f58;--text:#e6edf3;--text2:#8b949e;--text3:#6e7681;--accent:#58a6ff;--green:#3fb950;--red:#f85149;--amber:#e3b341;--purple:#bc8cff;--font:'SF Mono','JetBrains Mono','Fira Code',monospace;--sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px}
+.app{display:flex;min-height:100vh}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;height:100vh;overflow-y:auto}
+.main{flex:1;margin-left:220px;padding:28px;min-height:100vh}
+.sidebar-logo{padding:20px 16px;border-bottom:1px solid var(--border)}
+.sidebar-logo h1{font-size:15px;font-weight:700;color:var(--accent);letter-spacing:-.3px}
+.sidebar-logo p{font-size:11px;color:var(--text3);margin-top:3px}
+.nav{padding:8px 0;flex:1}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 16px;cursor:pointer;color:var(--text2);font-size:13px;transition:all .15s;border-left:2px solid transparent}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:rgba(88,166,255,.1);color:var(--accent);border-left-color:var(--accent)}
+.nav-section{padding:14px 16px 5px;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.8px}
+.router-status{padding:12px 16px;border-top:1px solid var(--border)}
+.rdot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;margin-right:6px}
+.rdot.mock{background:var(--amber)}
+.rdot.off{background:var(--red)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px}
+.page-header{margin-bottom:24px}
+.page-header h2{font-size:20px;font-weight:600}
+.page-header p{color:var(--text2);font-size:13px;margin-top:4px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}
+.stat-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+.stat-value{font-size:26px;font-weight:600;font-family:var(--font)}
+.stat-sub{font-size:12px;color:var(--text3);margin-top:4px}
+.sbadge{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 9px;border-radius:20px;margin-top:7px;font-weight:500}
+.sbadge-g{background:rgba(63,185,80,.15);color:var(--green)}
+.sbadge-b{background:rgba(88,166,255,.15);color:var(--accent)}
+.sbadge-a{background:rgba(227,179,65,.15);color:var(--amber)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;padding:8px 12px;border-bottom:1px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.mono{font-family:var(--font);font-size:12px}
+.badge{display:inline-flex;align-items:center;font-size:11px;padding:2px 8px;border-radius:20px;font-weight:500}
+.bg{background:rgba(63,185,80,.15);color:var(--green)}
+.br{background:rgba(248,81,73,.15);color:var(--red)}
+.bb{background:rgba(88,166,255,.15);color:var(--accent)}
+.bp{background:rgba(188,140,255,.15);color:var(--purple)}
+.ba{background:rgba(227,179,65,.15);color:var(--amber)}
+.bx{background:var(--surface2);color:var(--text2)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border2);background:var(--surface2);color:var(--text);transition:all .15s;outline:none;font-family:var(--sans)}
+.btn:hover{background:var(--surface);border-color:var(--text3)}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#0d1117;font-weight:600}
+.btn-primary:hover{background:#79b8ff;border-color:#79b8ff}
+.btn-danger{background:rgba(248,81,73,.1);border-color:rgba(248,81,73,.3);color:var(--red)}
+.btn-danger:hover{background:rgba(248,81,73,.2)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-icon{padding:6px}
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:5px}
+.form-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;transition:border-color .15s;font-family:var(--sans)}
+.form-input:focus{border-color:var(--accent)}
+.form-select{appearance:none;cursor:pointer}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:center;justify-content:center;z-index:100}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:10px;width:480px;max-width:92vw;max-height:85vh;overflow-y:auto}
+.modal-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-body{padding:20px}
+.modal-footer{padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end}
+.modal-title{font-size:15px;font-weight:600}
+.chart-wrap{position:relative;height:200px}
+.vcardgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.vcard{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.vpin{font-size:18px;font-weight:700;color:var(--accent);letter-spacing:2px;font-family:var(--font)}
+.vpas{font-size:11px;color:var(--text2);margin-top:2px;font-family:var(--font)}
+.qr{width:56px;height:56px;background:white;border-radius:4px;overflow:hidden;flex-shrink:0}
+.sec-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px}
+.divider{border:none;border-top:1px solid var(--border);margin:16px 0}
+.pbar{height:4px;background:var(--surface2);border-radius:2px;overflow:hidden}
+.pfill{height:100%;border-radius:2px;transition:width .4s}
+.flex-btw{display:flex;align-items:center;justify-content:space-between}
+.flex-c{display:flex;align-items:center;gap:8px}
+.mb16{margin-bottom:16px}
+.mb20{margin-bottom:20px}
+.err-banner{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);color:var(--red);padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+.spin{animation:spin 1s linear infinite;display:inline-block}
+.pulse{animation:blink 2s ease-in-out infinite}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+/* ================================================================
+   HTTP CLIENT
+   All calls go to the Express backend running on the same origin.
+   Base URL is empty so it works on any port.
+================================================================ */
+const http = {
+  async get(path) {
+    const r = await fetch(`/api${path}`);
+    return r.json();
+  },
+  async post(path, body) {
+    const r = await fetch(`/api${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return r.json();
+  },
+  async del(path) {
+    const r = await fetch(`/api${path}`, { method: 'DELETE' });
+    return r.json();
+  },
+};
+
+/* ====== HELPERS ====== */
+const fmtB = n => {
+  n = parseInt(n) || 0;
+  if (!n) return '0 B';
+  if (n < 1024) return n + ' B';
+  if (n < 1048576) return (n/1024).toFixed(1) + ' KB';
+  if (n < 1073741824) return (n/1048576).toFixed(1) + ' MB';
+  return (n/1073741824).toFixed(2) + ' GB';
+};
+const PCOLS = { blue:'#58a6ff', green:'#3fb950', purple:'#bc8cff', amber:'#e3b341', red:'#f85149', gray:'#8b949e' };
+
+/* ====== ICONS ====== */
+const IC = ({ n, s=16, c='currentColor' }) => {
+  const p = {
+    dash:   'M3 3h7v7H3zm11 0h7v7h-7zM3 14h7v7H3zm11 0h7v7h-7z',
+    ticket: 'M3 9a1 1 0 0 1 1-1h16a1 1 0 0 1 1 1v2a2 2 0 0 0 0 4v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2a2 2 0 0 0 0-4V9zm9-1v10',
+    users:  'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm14 2a4 4 0 0 1-3 3.87M16 3.13a4 4 0 0 1 0 7.75',
+    plan:   'M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM13 2v7h7M8 13h8M8 17h8',
+    report: 'M22 12l-4 0-3 9-6-18-3 9-4 0',
+    portal: 'M3 3h18a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm0 6h18M9 21V9',
+    router: 'M2 14h20v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2zm4 3h.01M10 17h.01M14 17h4M8 14V8m4-4v10m4-5v5',
+    plus:   'M12 5v14M5 12h14',
+    trash:  'M3 6h18m-2 0l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4h8v2M10 11v6m4-6v6',
+    x:      'M18 6L6 18M6 6l12 12',
+    print:  'M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2M6 14h12v8H6z',
+    wifi:   'M5 12.55a11 11 0 0 1 14.08 0M1.42 9a16 16 0 0 1 21.16 0M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01',
+    refresh:'M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15',
+    zap:    'M13 2L3 14h9l-1 8 10-12h-9z',
+    check:  'M20 6L9 17l-5-5',
+    info:   'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 6v4m0 4h.01',
+    alert:  'M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4m0 4h.01',
+    eye:    'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8zm11-3a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
+  };
+  const d = p[n];
+  if (!d) return null;
+  const isRect = d.startsWith('M3 3h7');
+  return <svg width={s} height={s} viewBox="0 0 24 24" fill={isRect?c:'none'} stroke={isRect?'none':c} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>;
+};
+
+const Modal = ({ title, onClose, children, footer }) => (
+  <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+    <div className="modal">
+      <div className="modal-header"><span className="modal-title">{title}</span><button className="btn btn-icon btn-sm" onClick={onClose}><IC n="x" s={14}/></button></div>
+      <div className="modal-body">{children}</div>
+      {footer && <div className="modal-footer">{footer}</div>}
+    </div>
+  </div>
+);
+
+const Toast = ({ msg, type }) => (
+  <div style={{position:'fixed',bottom:24,right:24,zIndex:200,background:type==='success'?'rgba(63,185,80,.12)':'rgba(248,81,73,.12)',border:`1px solid ${type==='success'?'rgba(63,185,80,.4)':'rgba(248,81,73,.4)'}`,color:type==='success'?'#3fb950':'#f85149',padding:'10px 16px',borderRadius:8,display:'flex',alignItems:'center',gap:8,fontSize:13}}>
+    <IC n={type==='success'?'check':'alert'} s={14}/>{msg}
+  </div>
+);
+
+const ModeBadge = ({ mode }) => (
+  <span className={`badge ${mode==='mock'?'ba':'bg'}`} style={{fontSize:10}}>
+    {mode==='mock'?'● MOCK':'● LIVE'}
+  </span>
+);
+
+/* ================================================================
+   DASHBOARD
+================================================================ */
+function Dashboard({ nav }) {
+  const [stats, setStats] = useState(null);
+  const [sales, setSales] = useState([]);
+  const chartRef = useRef();
+
+  useEffect(() => {
+    Promise.all([
+      http.get('/vouchers'),
+      http.get('/sessions'),
+      http.get('/system/info'),
+      http.get('/reports/sales?days=7'),
+    ]).then(([v, s, sys, rpt]) => {
+      setStats({ vouchers: v.data || [], sessions: s.data || [], sys: sys.data });
+      setSales(rpt.data || []);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!sales.length || !chartRef.current) return;
+    const ch = new Chart(chartRef.current.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: sales.map(d => d.label),
+        datasets: [
+          { label:'Revenue', data: sales.map(d=>d.revenue), backgroundColor:'rgba(88,166,255,.25)', borderColor:'#58a6ff', borderWidth:1, borderRadius:3, yAxisID:'y' },
+          { label:'Vouchers', data: sales.map(d=>d.vouchers), backgroundColor:'rgba(63,185,80,.25)', borderColor:'#3fb950', borderWidth:1, borderRadius:3, yAxisID:'y1' },
+        ],
+      },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ display:false } },
+        scales: { x:{ ticks:{color:'#6e7681',font:{size:10}}, grid:{color:'rgba(48,54,61,.7)'} }, y:{ ticks:{color:'#6e7681',font:{size:10}}, grid:{color:'rgba(48,54,61,.7)'} }, y1:{ position:'right', ticks:{color:'#6e7681',font:{size:10}}, grid:{display:false} } } },
+    });
+    return () => ch.destroy();
+  }, [sales]);
+
+  if (!stats) return <div style={{textAlign:'center',padding:60,color:'#6e7681'}}>Loading…</div>;
+
+  const { vouchers, sessions, sys } = stats;
+  const si = sys?.sysinfo || {};
+  const mem = si['total-memory'] ? Math.round((si['total-memory']-si['free-memory'])/si['total-memory']*100) : 0;
+  const totalRev = sales.reduce((a,b)=>a+b.revenue,0);
+
+  return (
+    <div>
+      <div className="page-header"><h2>Dashboard</h2><p>Hotspot network overview</p></div>
+      <div className="stats-grid">
+        <div className="stat-card"><div className="stat-label">Vouchers</div><div className="stat-value">{vouchers.length}</div><div className="sbadge sbadge-g">Active: {vouchers.filter(v=>v.disabled==='false').length}</div></div>
+        <div className="stat-card"><div className="stat-label">Live Sessions</div><div className="stat-value" style={{color:sessions.length?'#3fb950':'#6e7681'}}>{sessions.length}</div><div className="sbadge sbadge-b">Online now</div></div>
+        <div className="stat-card"><div className="stat-label">7-Day Revenue</div><div className="stat-value" style={{fontSize:22}}>{totalRev.toLocaleString()}</div><div className="stat-sub">DZD</div></div>
+        <div className="stat-card"><div className="stat-label">Router Uptime</div><div className="stat-value" style={{fontSize:19}}>{si.uptime||'—'}</div><div className="stat-sub" style={{color:'#3fb950'}}>● {sys?.identity?.name||'CHR'}</div></div>
+      </div>
+      <div className="g2 mb20">
+        <div className="card">
+          <div className="flex-btw mb16">
+            <div className="sec-title" style={{margin:0}}>Revenue & Vouchers — 7 Days</div>
+            <div style={{display:'flex',gap:12,fontSize:11,color:'#8b949e'}}>
+              <span><span style={{display:'inline-block',width:8,height:8,background:'#58a6ff',borderRadius:2,marginRight:4}}/>Revenue</span>
+              <span><span style={{display:'inline-block',width:8,height:8,background:'#3fb950',borderRadius:2,marginRight:4}}/>Vouchers</span>
+            </div>
+          </div>
+          <div className="chart-wrap"><canvas ref={chartRef} role="img" aria-label="7-day revenue and vouchers chart"/></div>
+        </div>
+        <div className="card">
+          <div className="sec-title">System Resources</div>
+          {si['cpu-load'] !== undefined ? (
+            <>
+              <div style={{marginBottom:16}}>
+                <div className="flex-btw" style={{fontSize:12,marginBottom:6}}><span style={{color:'#8b949e'}}>CPU</span><span className="mono" style={{color:parseInt(si['cpu-load'])>70?'#f85149':'#3fb950'}}>{si['cpu-load']}%</span></div>
+                <div className="pbar"><div className="pfill" style={{width:si['cpu-load']+'%',background:parseInt(si['cpu-load'])>70?'#f85149':'#58a6ff'}}/></div>
+              </div>
+              <div style={{marginBottom:16}}>
+                <div className="flex-btw" style={{fontSize:12,marginBottom:6}}><span style={{color:'#8b949e'}}>RAM</span><span className="mono">{mem}%</span></div>
+                <div className="pbar"><div className="pfill" style={{width:mem+'%',background:'#58a6ff'}}/></div>
+              </div>
+              <hr className="divider"/>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,fontSize:12}}>
+                {[['Version',si.version],['Arch',si['architecture-name']],['Board',si['board-name']],['Disk Free',fmtB(si['free-hdd-space'])]].map(([k,v])=>(
+                  <div key={k}><span style={{color:'#8b949e',display:'block',marginBottom:2}}>{k}</span><span className="mono" style={{fontSize:11}}>{v}</span></div>
+                ))}
+              </div>
+            </>
+          ) : <div style={{color:'#6e7681',fontSize:13}}>Go to Router / CHR to connect</div>}
+        </div>
+      </div>
+      <div className="card">
+        <div className="flex-btw mb16"><div className="sec-title" style={{margin:0}}>Live Sessions</div><button className="btn btn-sm" onClick={()=>nav('sessions')}><IC n="users" s={13}/>View all</button></div>
+        {sessions.length===0 ? <div style={{textAlign:'center',padding:'28px 0',color:'#6e7681',fontSize:13}}>No active sessions</div> : (
+          <div className="table-wrap"><table><thead><tr><th>User</th><th>IP</th><th>Uptime</th><th>Download</th><th>Plan</th></tr></thead>
+            <tbody>{sessions.map(s=>(
+              <tr key={s['.id']}><td className="mono" style={{color:'#58a6ff',fontWeight:600}}>{s.user}</td><td className="mono">{s.address}</td><td style={{fontSize:12}}>{s.uptime}</td><td style={{fontSize:12,color:'#3fb950'}}>{fmtB(s['bytes-in'])}</td><td><span className="badge bb">{s.profile}</span></td></tr>
+            ))}</tbody>
+          </table></div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   VOUCHERS
+================================================================ */
+function VouchersPage({ onToast }) {
+  const [vouchers, setVouchers]   = useState([]);
+  const [plans, setPlans]         = useState([]);
+  const [showGen, setShowGen]     = useState(false);
+  const [fresh, setFresh]         = useState([]);
+  const [busy, setBusy]           = useState(false);
+  const [search, setSearch]       = useState('');
+  const [form, setForm]           = useState({ plan:'', count:5, prefix:'HSP', comment:'' });
+
+  const load = useCallback(async () => {
+    const [v, p] = await Promise.all([http.get('/vouchers'), http.get('/plans')]);
+    setVouchers(v.data || []); setPlans(p.data || []);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const gen = async () => {
+    if (!form.plan) return;
+    setBusy(true);
+    const res = await http.post('/vouchers/generate', { profile: form.plan, count: form.count, prefix: form.prefix, comment: form.comment });
+    if (res.ok) { setVouchers(v => [...res.data, ...v]); setFresh(res.data); setShowGen(false); onToast(`${res.data.length} vouchers generated`, 'success'); }
+    else onToast(res.error, 'error');
+    setBusy(false);
+  };
+
+  const del = async id => {
+    const res = await http.del(`/vouchers/${id}`);
+    if (res.ok) { setVouchers(v => v.filter(x => x['.id'] !== id)); onToast('Voucher deleted', 'success'); }
+    else onToast(res.error, 'error');
+  };
+
+  const filtered = vouchers.filter(v => !search || v.name.includes(search.toUpperCase()) || v.password.includes(search.toUpperCase()));
+
+  return (
+    <div>
+      <div className="page-header">
+        <div className="flex-btw"><div><h2>Vouchers</h2><p>Generate and manage WiFi access vouchers</p></div>
+          <button className="btn btn-primary" onClick={()=>setShowGen(true)}><IC n="plus" s={14}/>Generate</button></div>
+      </div>
+
+      {fresh.length > 0 && (
+        <div className="card mb20" style={{borderColor:'rgba(63,185,80,.3)',marginBottom:20}}>
+          <div className="flex-btw mb16">
+            <div className="sec-title" style={{margin:0,color:'#3fb950'}}>✓ {fresh.length} Vouchers Ready</div>
+            <div style={{display:'flex',gap:8}}>
+              <button className="btn btn-sm" onClick={()=>window.print()}><IC n="print" s={13}/>Print</button>
+              <button className="btn btn-sm btn-icon" onClick={()=>setFresh([])}><IC n="x" s={13}/></button>
+            </div>
+          </div>
+          <div className="vcardgrid">
+            {fresh.map(v=>(
+              <div key={v['.id']} className="vcard">
+                <div>
+                  <div style={{fontSize:10,color:'#6e7681',marginBottom:3}}>{v.profile}</div>
+                  <div className="vpin">{v.name.split('-').slice(-1)[0]}</div>
+                  <div className="vpas">Pass: {v.password}</div>
+                </div>
+                <div className="qr">
+                  <svg viewBox="0 0 56 56" width="56" height="56">
+                    {[...Array(7)].map((_,r)=>[...Array(7)].map((_,c)=>
+                      Math.abs(Math.sin(r*17+c*13+(v.name.charCodeAt(0)||0)))>0.4?<rect key={`${r}-${c}`} x={c*8} y={r*8} width={7} height={7} fill="#000"/>:null
+                    ))}
+                  </svg>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="card">
+        <div className="flex-btw mb16">
+          <div className="sec-title" style={{margin:0}}>All Vouchers ({filtered.length})</div>
+          <div style={{display:'flex',gap:8}}>
+            <input className="form-input" style={{width:180,padding:'5px 10px'}} placeholder="Search code..." value={search} onChange={e=>setSearch(e.target.value)}/>
+            <button className="btn btn-sm" onClick={load}><IC n="refresh" s={13}/></button>
+          </div>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Code</th><th>Password</th><th>Plan</th><th>Status</th><th>Used Time</th><th>Data In</th><th>Created</th><th></th></tr></thead>
+            <tbody>{filtered.map(v=>(
+              <tr key={v['.id']}>
+                <td className="mono" style={{fontWeight:600}}>{v.name}</td>
+                <td className="mono">{v.password}</td>
+                <td><span className="badge bb">{v.profile}</span></td>
+                <td><span className={`badge ${v.disabled==='true'?'bx':'bg'}`}>{v.disabled==='true'?'used':'available'}</span></td>
+                <td style={{fontSize:12,color:'#8b949e'}}>{v.uptime||'—'}</td>
+                <td style={{fontSize:12,color:'#8b949e'}}>{fmtB(v['bytes-in'])}</td>
+                <td style={{fontSize:12,color:'#6e7681'}}>{v.createdAt?new Date(v.createdAt).toLocaleDateString():'—'}</td>
+                <td><button className="btn btn-sm btn-danger btn-icon" onClick={()=>del(v['.id'])}><IC n="trash" s={13}/></button></td>
+              </tr>
+            ))}</tbody>
+          </table>
+        </div>
+      </div>
+
+      {showGen && (
+        <Modal title="Generate Vouchers" onClose={()=>setShowGen(false)}
+          footer={<><button className="btn" onClick={()=>setShowGen(false)}>Cancel</button><button className="btn btn-primary" onClick={gen} disabled={busy||!form.plan}>{busy?<span className="spin">↻</span>:<IC n="zap" s={13}/>}Generate</button></>}>
+          <div className="form-group">
+            <label className="form-label">Internet Plan *</label>
+            <select className="form-input form-select" value={form.plan} onChange={e=>setForm(f=>({...f,plan:e.target.value}))}>
+              <option value="">Select a plan…</option>
+              {plans.map(p=><option key={p['.id']} value={p.name}>{p.name} — {p['rate-limit']} — {p['session-timeout']} — {parseInt(p.price||0).toLocaleString()} DZD</option>)}
+            </select>
+          </div>
+          <div className="form-row">
+            <div className="form-group"><label className="form-label">Quantity (1–100)</label><input className="form-input" type="number" min="1" max="100" value={form.count} onChange={e=>setForm(f=>({...f,count:+e.target.value}))}/></div>
+            <div className="form-group"><label className="form-label">Code Prefix</label><input className="form-input mono" value={form.prefix} onChange={e=>setForm(f=>({...f,prefix:e.target.value.toUpperCase()}))}/></div>
+          </div>
+          <div className="form-group"><label className="form-label">Comment (optional)</label><input className="form-input" placeholder="Table 5, Batch #12…" value={form.comment} onChange={e=>setForm(f=>({...f,comment:e.target.value}))}/></div>
+          <div style={{background:'var(--surface2)',borderRadius:6,padding:'10px 12px',fontSize:12,color:'#8b949e',display:'flex',gap:8}}>
+            <IC n="info" s={14} c="#8b949e"/>RouterOS: <span className="mono" style={{fontSize:11}}>/ip/hotspot/user/add</span>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ================================================================
+   SESSIONS
+================================================================ */
+function SessionsPage({ onToast }) {
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading]   = useState(true);
+
+  const load = useCallback(async () => {
+    const r = await http.get('/sessions');
+    setSessions(r.data || []); setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); const t=setInterval(load,10000); return ()=>clearInterval(t); }, [load]);
+
+  const kick = async s => {
+    const r = await http.del(`/sessions/${s['.id']}`);
+    if (r.ok) { setSessions(ss=>ss.filter(x=>x['.id']!==s['.id'])); onToast(`${s.user} disconnected`,'success'); }
+    else onToast(r.error, 'error');
+  };
+
+  const totalIn  = sessions.reduce((a,s)=>a+parseInt(s['bytes-in']||0),0);
+  const totalOut = sessions.reduce((a,s)=>a+parseInt(s['bytes-out']||0),0);
+
+  return (
+    <div>
+      <div className="page-header">
+        <div className="flex-btw"><div><h2>Active Sessions</h2><p>Live connections — auto-refreshes every 10 s</p></div>
+          <div className="flex-c"><span style={{fontSize:12,color:'#6e7681',display:'flex',alignItems:'center',gap:5}}><span className="rdot pulse"/>Live</span><button className="btn btn-sm" onClick={load}><IC n="refresh" s={13}/>Refresh</button></div>
+        </div>
+      </div>
+      <div className="g3 mb20">
+        <div className="stat-card"><div className="stat-label">Connected</div><div className="stat-value" style={{color:sessions.length?'#3fb950':'#6e7681'}}>{sessions.length}</div></div>
+        <div className="stat-card"><div className="stat-label">Total Download</div><div className="stat-value" style={{fontSize:20}}>{fmtB(totalIn)}</div></div>
+        <div className="stat-card"><div className="stat-label">Total Upload</div><div className="stat-value" style={{fontSize:20}}>{fmtB(totalOut)}</div></div>
+      </div>
+      <div className="card">
+        {loading ? <div style={{textAlign:'center',padding:32,color:'#6e7681'}}>Loading…</div> :
+         sessions.length===0 ? <div style={{textAlign:'center',padding:'44px 0',color:'#6e7681'}}><IC n="wifi" s={36} c="#484f58"/><div style={{marginTop:12,fontSize:13}}>No active sessions</div></div> : (
+          <div className="table-wrap"><table>
+            <thead><tr><th>User</th><th>IP</th><th>MAC</th><th>Uptime</th><th>Download</th><th>Upload</th><th>Plan</th><th>Device</th><th></th></tr></thead>
+            <tbody>{sessions.map(s=>(
+              <tr key={s['.id']}>
+                <td className="mono" style={{color:'#58a6ff',fontWeight:600}}>{s.user}</td>
+                <td className="mono">{s.address}</td>
+                <td className="mono" style={{fontSize:11,color:'#8b949e'}}>{s['mac-address']}</td>
+                <td style={{fontSize:12}}>{s.uptime}</td>
+                <td className="mono" style={{fontSize:12,color:'#3fb950'}}>↓ {fmtB(s['bytes-in'])}</td>
+                <td className="mono" style={{fontSize:12,color:'#e3b341'}}>↑ {fmtB(s['bytes-out'])}</td>
+                <td><span className="badge bb">{s.profile}</span></td>
+                <td style={{fontSize:12,color:'#8b949e'}}>{s.host}</td>
+                <td><button className="btn btn-sm btn-danger" onClick={()=>kick(s)}>Kick</button></td>
+              </tr>
+            ))}</tbody>
+          </table></div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   PLANS
+================================================================ */
+function PlansPage({ onToast }) {
+  const [plans, setPlans]       = useState([]);
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm]         = useState({ name:'','rate-limit':'','session-timeout':'','shared-users':'1',price:'' });
+  const colors = ['blue','green','purple','amber','red','gray'];
+
+  useEffect(() => { http.get('/plans').then(r=>setPlans(r.data||[])); }, []);
+
+  const create = async () => {
+    const r = await http.post('/plans', form);
+    if (r.ok) { setPlans(p=>[...p,{...r.data,color:colors[plans.length%colors.length]}]); setShowCreate(false); setForm({name:'','rate-limit':'','session-timeout':'','shared-users':'1',price:''}); onToast('Plan created','success'); }
+    else onToast(r.error,'error');
+  };
+
+  const del = async id => {
+    const r = await http.del(`/plans/${id}`);
+    if (r.ok) { setPlans(p=>p.filter(x=>x['.id']!==id)); onToast('Plan deleted','success'); }
+  };
+
+  return (
+    <div>
+      <div className="page-header"><div className="flex-btw"><div><h2>Internet Plans</h2><p>RouterOS: /ip/hotspot/user/profile</p></div><button className="btn btn-primary" onClick={()=>setShowCreate(true)}><IC n="plus" s={14}/>New Plan</button></div></div>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(230px,1fr))',gap:16}}>
+        {plans.map((p,i)=>(
+          <div key={p['.id']} className="card" style={{borderTop:`2px solid ${PCOLS[p.color||colors[i%colors.length]]||'#58a6ff'}`}}>
+            <div className="flex-btw mb16"><div style={{fontWeight:600,fontSize:15}}>{p.name}</div><button className="btn btn-sm btn-icon btn-danger" onClick={()=>del(p['.id'])}><IC n="trash" s={13}/></button></div>
+            <div style={{display:'grid',gap:9,fontSize:12}}>
+              {[['Rate Limit',p['rate-limit'],PCOLS[p.color||colors[i%colors.length]]],['Duration',p['session-timeout'],null],['Shared Users',p['shared-users'],null]].map(([k,v,col])=>(
+                <div key={k} className="flex-btw"><span style={{color:'#8b949e'}}>{k}</span><span className="mono" style={{color:col||'inherit'}}>{v}</span></div>
+              ))}
+              {p.price>0 && <div className="flex-btw"><span style={{color:'#8b949e'}}>Price</span><span style={{fontWeight:600,color:'#3fb950'}}>{parseInt(p.price).toLocaleString()} DZD</span></div>}
+            </div>
+          </div>
+        ))}
+        <div className="card" style={{border:'1px dashed var(--border)',background:'transparent',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',minHeight:160}} onClick={()=>setShowCreate(true)}>
+          <div style={{textAlign:'center',color:'#6e7681'}}><IC n="plus" s={28} c="#484f58"/><div style={{marginTop:8,fontSize:13}}>Add Plan</div></div>
+        </div>
+      </div>
+      {showCreate && (
+        <Modal title="New Internet Plan" onClose={()=>setShowCreate(false)}
+          footer={<><button className="btn" onClick={()=>setShowCreate(false)}>Cancel</button><button className="btn btn-primary" onClick={create} disabled={!form.name||!form['rate-limit']}>Create Plan</button></>}>
+          <div className="form-group"><label className="form-label">Plan Name *</label><input className="form-input" placeholder="1-Hour, Daily, VIP…" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))}/></div>
+          <div className="form-row">
+            <div className="form-group"><label className="form-label">Rate Limit * (up/down)</label><input className="form-input mono" placeholder="5M/5M" value={form['rate-limit']} onChange={e=>setForm(f=>({...f,'rate-limit':e.target.value}))}/></div>
+            <div className="form-group"><label className="form-label">Session Timeout</label><input className="form-input mono" placeholder="1h, 3h, 1d, 7d" value={form['session-timeout']} onChange={e=>setForm(f=>({...f,'session-timeout':e.target.value}))}/></div>
+          </div>
+          <div className="form-row">
+            <div className="form-group"><label className="form-label">Shared Users</label><select className="form-input form-select" value={form['shared-users']} onChange={e=>setForm(f=>({...f,'shared-users':e.target.value}))}>{[1,2,3,5,10].map(n=><option key={n} value={n}>{n}</option>)}</select></div>
+            <div className="form-group"><label className="form-label">Price (DZD)</label><input className="form-input" type="number" placeholder="500" value={form.price} onChange={e=>setForm(f=>({...f,price:e.target.value}))}/></div>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+/* ================================================================
+   REPORTS
+================================================================ */
+function ReportsPage() {
+  const [days, setDays] = useState(7);
+  const [data, setData] = useState([]);
+  const chartRef = useRef();
+
+  useEffect(() => { http.get(`/reports/sales?days=${days}`).then(r=>setData(r.data||[])); }, [days]);
+
+  useEffect(() => {
+    if (!data.length || !chartRef.current) return;
+    const ch = new Chart(chartRef.current.getContext('2d'), {
+      type:'line', data:{ labels:data.map(d=>d.label), datasets:[{ label:'Revenue', data:data.map(d=>d.revenue), borderColor:'#58a6ff', backgroundColor:'rgba(88,166,255,.07)', borderWidth:2, pointRadius:3, pointBackgroundColor:'#58a6ff', fill:true, tension:.35 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, scales:{ x:{ticks:{color:'#6e7681',font:{size:10}},grid:{color:'rgba(48,54,61,.6)'}}, y:{ticks:{color:'#6e7681',font:{size:10},callback:v=>v.toLocaleString()},grid:{color:'rgba(48,54,61,.6)'}} } },
+    });
+    return () => ch.destroy();
+  }, [data]);
+
+  const totRev = data.reduce((a,b)=>a+b.revenue,0);
+  const totV   = data.reduce((a,b)=>a+b.vouchers,0);
+  const maxR   = Math.max(...data.map(d=>d.revenue),1);
+
+  return (
+    <div>
+      <div className="page-header"><div className="flex-btw"><div><h2>Sales Reports</h2><p>Revenue and voucher analytics</p></div><div style={{display:'flex',gap:6}}>{[7,14,30].map(d=><button key={d} className={`btn btn-sm${days===d?' btn-primary':''}`} onClick={()=>setDays(d)}>{d}d</button>)}</div></div></div>
+      <div className="stats-grid">
+        {[['Total Revenue',totRev.toLocaleString(),'DZD'],['Vouchers Sold',totV,null],['Daily Average',Math.round(totRev/(data.length||1)).toLocaleString(),'DZD/day'],['Avg / Voucher',totV?Math.round(totRev/totV).toLocaleString():'—','DZD']].map(([l,v,s])=>(
+          <div key={l} className="stat-card"><div className="stat-label">{l}</div><div className="stat-value" style={{fontSize:22}}>{v}</div>{s&&<div className="stat-sub">{s}</div>}</div>
+        ))}
+      </div>
+      <div className="card mb20" style={{marginBottom:20}}>
+        <div className="sec-title">Revenue Trend — Last {days} Days</div>
+        <div className="chart-wrap" style={{height:220}}><canvas ref={chartRef} role="img" aria-label={`Revenue trend over ${days} days`}/></div>
+      </div>
+      <div className="card">
+        <div className="sec-title">Daily Breakdown</div>
+        <div className="table-wrap"><table>
+          <thead><tr><th>Date</th><th>Vouchers</th><th>Revenue (DZD)</th><th>Share</th></tr></thead>
+          <tbody>{data.map((d,i)=>(
+            <tr key={i}><td style={{fontWeight:500}}>{d.label}</td><td className="mono">{d.vouchers}</td><td className="mono" style={{color:'#3fb950'}}>{d.revenue.toLocaleString()}</td><td style={{width:'30%'}}><div className="pbar"><div className="pfill" style={{width:Math.round(d.revenue/maxR*100)+'%',background:'#3fb950'}}/></div></td></tr>
+          ))}</tbody>
+        </table></div>
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   PORTAL EDITOR
+================================================================ */
+function PortalPage({ onToast }) {
+  const [cfg, setCfg] = useState({ title:'Welcome to Our WiFi', subtitle:'Enter your voucher code to connect', brand:'WiFi Zone', primary:'#58a6ff', bg:'#0d1117', redirect:'https://google.com' });
+  const preview = `<html><body style="margin:0;font-family:sans-serif;background:${cfg.bg};min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px"><div style="background:#161b22;border:1px solid #30363d;border-radius:12px;padding:32px 28px;width:300px;text-align:center"><div style="font-size:20px;font-weight:700;color:${cfg.primary};margin-bottom:6px">${cfg.brand}</div><div style="font-size:16px;font-weight:600;color:#e6edf3;margin-bottom:6px">${cfg.title}</div><div style="font-size:12px;color:#8b949e;margin-bottom:22px">${cfg.subtitle}</div><input style="width:100%;background:#21262d;border:1px solid #30363d;border-radius:6px;padding:10px;color:#e6edf3;font-size:16px;text-align:center;letter-spacing:3px;outline:none;margin-bottom:10px;box-sizing:border-box" placeholder="XXXXXX"/><button style="width:100%;background:${cfg.primary};border:none;border-radius:6px;padding:10px;color:#0d1117;font-size:14px;font-weight:700;cursor:pointer">Connect</button><div style="font-size:10px;color:#484f58;margin-top:14px">Powered by VoucherNet</div></div></body></html>`;
+  return (
+    <div>
+      <div className="page-header"><div className="flex-btw"><div><h2>Captive Portal Editor</h2><p>Customize your hotspot login page</p></div><button className="btn btn-primary" onClick={()=>onToast('Portal config saved — deploy via /file/set on router','success')}><IC n="zap" s={14}/>Save & Publish</button></div></div>
+      <div className="g2">
+        <div>
+          <div className="card" style={{marginBottom:16}}>
+            <div className="sec-title">Content</div>
+            {[['Brand / Logo Name','text',cfg.brand,v=>setCfg(c=>({...c,brand:v}))],['Login Title','text',cfg.title,v=>setCfg(c=>({...c,title:v}))],['Subtitle','text',cfg.subtitle,v=>setCfg(c=>({...c,subtitle:v}))],['Redirect URL','url',cfg.redirect,v=>setCfg(c=>({...c,redirect:v}))]].map(([l,t,val,ch])=>(
+              <div key={l} className="form-group"><label className="form-label">{l}</label><input className="form-input" type={t} value={val} onChange={e=>ch(e.target.value)}/></div>
+            ))}
+          </div>
+          <div className="card">
+            <div className="sec-title">Appearance</div>
+            {[['Accent Color',cfg.primary,v=>setCfg(c=>({...c,primary:v}))],['Background Color',cfg.bg,v=>setCfg(c=>({...c,bg:v}))]].map(([l,val,ch])=>(
+              <div key={l} className="form-group" style={{display:'flex',gap:8,alignItems:'flex-end'}}>
+                <div style={{flex:1}}><label className="form-label">{l}</label><input className="form-input mono" value={val} onChange={e=>ch(e.target.value)}/></div>
+                <input type="color" value={val} onChange={e=>ch(e.target.value)} style={{width:38,height:38,border:'1px solid var(--border)',borderRadius:6,cursor:'pointer',padding:2,background:'var(--surface2)',marginBottom:14}}/>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="card" style={{padding:0,overflow:'hidden'}}>
+          <div style={{padding:'10px 16px',borderBottom:'1px solid var(--border)',fontSize:12,color:'#8b949e',display:'flex',gap:8,alignItems:'center'}}><IC n="eye" s={13}/>Live Preview</div>
+          <iframe srcDoc={preview} style={{width:'100%',height:440,border:'none'}} title="Captive portal preview" sandbox="allow-same-origin"/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   ROUTER / CHR
+================================================================ */
+function RouterPage({ onToast, onStatusChange }) {
+  const [cfg, setCfg]       = useState({ host:'192.168.0.124', port:'8728', user:'admin', password:'admin' });
+  const [busy, setBusy]     = useState(false);
+  const [info, setInfo]     = useState(null);
+  const [neighbors, setNeighbors] = useState([]);
+  const [mode, setMode]     = useState('unknown');
+  const [err, setErr]       = useState('');
+
+  useEffect(() => {
+    http.get('/system/status').then(r => {
+      if (r.ok) { setMode(r.data.mode); if (r.data.mode==='live') http.get('/system/info').then(si=>si.ok&&setInfo(si.data)); }
+    });
+  }, []);
+
+  const connect = async () => {
+    setBusy(true); setErr('');
+    const r = await http.post('/system/connect', { host:cfg.host, port:parseInt(cfg.port), user:cfg.user, password:cfg.password });
+    if (r.ok) { setInfo(r.data); setMode(r.data.mode); onStatusChange(r.data.mode); onToast(`Connected to ${r.data.identity?.name||cfg.host}`,'success'); }
+    else { setErr(r.error||'Connection failed'); setMode(r.data?.mode||'unknown'); onToast('Connection failed','error'); }
+    setBusy(false);
+  };
+
+  const discover = async () => {
+    const r = await http.get('/system/neighbors');
+    if (r.ok) { setNeighbors(r.data||[]); onToast(`Found ${r.data.length} device(s)`,'success'); }
+  };
+
+  const cmds = [
+    ['Enable API service',    '/ip service set api disabled=no port=8728'],
+    ['Create API user',       '/user add name=vouchernet password=YOURPASS group=full'],
+    ['Firewall — allow API',  '/ip firewall filter add chain=input protocol=tcp dst-port=8728 action=accept place-before=0'],
+    ['Create hotspot pool',   '/ip pool add name=hs-pool ranges=192.168.99.2-192.168.99.254'],
+    ['Configure hotspot',     '/ip hotspot setup'],
+  ];
+
+  return (
+    <div>
+      <div className="page-header"><h2>Router / CHR</h2><p>Connect your MikroTik Cloud Hosted Router or physical device</p></div>
+      {err && <div className="err-banner"><IC n="alert" s={14}/> {err}</div>}
+      <div className="g2">
+        <div>
+          <div className="card" style={{marginBottom:16}}>
+            <div className="flex-btw mb16">
+              <div className="sec-title" style={{margin:0}}>RouterOS API Connection</div>
+              <ModeBadge mode={mode}/>
+            </div>
+            <div className="form-row">
+              <div className="form-group"><label className="form-label">Host / IP</label><input className="form-input mono" placeholder="192.168.88.1" value={cfg.host} onChange={e=>setCfg(c=>({...c,host:e.target.value}))}/></div>
+              <div className="form-group"><label className="form-label">API Port</label><input className="form-input mono" placeholder="8728" value={cfg.port} onChange={e=>setCfg(c=>({...c,port:e.target.value}))}/></div>
+            </div>
+            <div className="form-row">
+              <div className="form-group"><label className="form-label">Username</label><input className="form-input" placeholder="admin" value={cfg.user} onChange={e=>setCfg(c=>({...c,user:e.target.value}))}/></div>
+              <div className="form-group"><label className="form-label">Password</label><input className="form-input" type="password" value={cfg.password} onChange={e=>setCfg(c=>({...c,password:e.target.value}))}/></div>
+            </div>
+            <div style={{display:'flex',gap:8,marginTop:4}}>
+              <button className="btn btn-primary" style={{flex:1}} onClick={connect} disabled={busy}>
+                {busy?<><span className="spin">↻</span> Connecting…</>:mode==='live'?<><IC n="check" s={13}/>Reconnect</>:<><IC n="router" s={13}/>Connect to CHR</>}
+              </button>
+              <button className="btn" onClick={discover}><IC n="wifi" s={13}/>Discover</button>
+            </div>
+          </div>
+
+          {neighbors.length>0 && (
+            <div className="card">
+              <div className="sec-title">Discovered on LAN</div>
+              {neighbors.map(n=>(
+                <div key={n['.id']} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
+                  <div><div style={{fontWeight:600,fontSize:13}}>{n.identity}</div><div className="mono" style={{fontSize:11,color:'#8b949e',marginTop:2}}>{n.address} · {n.board} · {n.version}</div></div>
+                  <button className="btn btn-sm" onClick={()=>{setCfg(c=>({...c,host:n.address}));onToast('IP filled in','success');}}>Use</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div>
+          {info?.sysinfo ? (
+            <div className="card" style={{marginBottom:16}}>
+              <div className="flex-btw mb16"><div style={{display:'flex',alignItems:'center',gap:8}}><span className={`rdot${mode==='mock'?' mock':''}`}/><span style={{fontWeight:600,fontSize:15}}>{info.identity?.name}</span></div><ModeBadge mode={mode}/></div>
+              <div style={{display:'grid',gap:0}}>
+                {[['Board',info.sysinfo['board-name']],['RouterOS',info.sysinfo.version],['Architecture',info.sysinfo['architecture-name']],['Uptime',info.sysinfo.uptime],['CPU',info.sysinfo['cpu-load']+'%'],['RAM',fmtB(parseInt(info.sysinfo['total-memory'])-parseInt(info.sysinfo['free-memory']))+' / '+fmtB(info.sysinfo['total-memory'])],['Disk Free',fmtB(info.sysinfo['free-hdd-space'])]].map(([k,v])=>(
+                  <div key={k} className="flex-btw" style={{padding:'8px 0',borderBottom:'1px solid var(--border)',fontSize:13}}><span style={{color:'#8b949e'}}>{k}</span><span className="mono" style={{fontSize:12}}>{v}</span></div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="card" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',minHeight:200,border:'1px dashed var(--border)',background:'transparent',marginBottom:16}}>
+              <IC n="router" s={40} c="#484f58"/><div style={{marginTop:12,fontSize:13,color:'#6e7681',textAlign:'center'}}>Enter CHR details and click Connect</div>
+            </div>
+          )}
+
+          <div className="card">
+            <div className="sec-title">Required CHR Setup Commands</div>
+            <div style={{display:'grid',gap:8}}>
+              {cmds.map(([t,c])=>(
+                <div key={t} style={{background:'var(--surface2)',borderRadius:6,padding:'9px 12px'}}>
+                  <div style={{fontWeight:600,fontSize:12,marginBottom:3,color:'#58a6ff'}}>{t}</div>
+                  <div className="mono" style={{fontSize:10,color:'#6e7681',wordBreak:'break-all'}}>{c}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================
+   APP ROOT
+================================================================ */
+const NAV = [
+  { id:'dashboard', label:'Dashboard',     icon:'dash',   group:'Main' },
+  { id:'vouchers',  label:'Vouchers',       icon:'ticket', group:'Main' },
+  { id:'sessions',  label:'Live Sessions',  icon:'users',  group:'Main' },
+  { id:'plans',     label:'Plans',          icon:'plan',   group:'Manage' },
+  { id:'reports',   label:'Reports',        icon:'report', group:'Manage' },
+  { id:'portal',    label:'Captive Portal', icon:'portal', group:'Manage' },
+  { id:'router',    label:'Router / CHR',   icon:'router', group:'Infra' },
+];
+
+function App() {
+  const [page, setPage]   = useState('dashboard');
+  const [toast, setToast] = useState(null);
+  const [mode, setMode]   = useState('unknown');
+  const [identity, setIdentity] = useState(null);
+
+  useEffect(() => {
+    http.get('/system/status').then(r => {
+      if (r.ok) { setMode(r.data.mode); setIdentity(r.data.identity); }
+    });
+  }, []);
+
+  const notify = (msg, type='success') => {
+    setToast({ msg, type }); setTimeout(() => setToast(null), 3200);
+  };
+
+  const groups = [...new Set(NAV.map(n=>n.group))];
+  const dotCls = mode==='live' ? 'rdot' : mode==='mock' ? 'rdot mock' : 'rdot off';
+
+  return (
+    <div className="app">
+      <nav className="sidebar">
+        <div className="sidebar-logo"><h1>⚡ VoucherNet</h1><p>WiFi Hotspot Manager</p></div>
+        <div className="nav">
+          {groups.map(g=>(
+            <div key={g}>
+              <div className="nav-section">{g}</div>
+              {NAV.filter(n=>n.group===g).map(n=>(
+                <div key={n.id} className={`nav-item${page===n.id?' active':''}`} onClick={()=>setPage(n.id)}>
+                  <IC n={n.icon} s={15}/>{n.label}
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="router-status">
+          <div style={{fontSize:11,color:'#6e7681',marginBottom:4}}>Data source</div>
+          <div style={{fontSize:12,display:'flex',alignItems:'center',gap:6}}>
+            <span className={dotCls}/>
+            <span style={{color:mode==='live'?'#3fb950':mode==='mock'?'#e3b341':'#6e7681'}}>
+              {mode==='live'?'Live router':mode==='mock'?'Mock data':'Not connected'}
+            </span>
+          </div>
+          <div className="mono" style={{fontSize:10,color:'#484f58',marginTop:2}}>{identity?.name||'—'}</div>
+        </div>
+      </nav>
+
+      <main className="main">
+        {page==='dashboard' && <Dashboard nav={setPage}/>}
+        {page==='vouchers'  && <VouchersPage onToast={notify}/>}
+        {page==='sessions'  && <SessionsPage onToast={notify}/>}
+        {page==='plans'     && <PlansPage onToast={notify}/>}
+        {page==='reports'   && <ReportsPage/>}
+        {page==='portal'    && <PortalPage onToast={notify}/>}
+        {page==='router'    && <RouterPage onToast={notify} onStatusChange={m=>{setMode(m);http.get('/system/status').then(r=>r.ok&&setIdentity(r.data.identity));}}/>}
+      </main>
+
+      {toast && <Toast msg={toast.msg} type={toast.type}/>}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
